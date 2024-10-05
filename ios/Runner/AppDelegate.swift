@@ -34,7 +34,7 @@ import Firebase
   }
   
   // Handle incoming messages while the app is in the foreground
-  func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
+  override func application(_ application: UIApplication, didReceiveRemoteNotification userInfo: [AnyHashable: Any], fetchCompletionHandler completionHandler: @escaping (UIBackgroundFetchResult) -> Void) {
     // Handle the received notification
     print("Received notification: \(userInfo)")
     completionHandler(.newData)
