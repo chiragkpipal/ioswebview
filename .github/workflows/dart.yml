@@ -20,10 +20,16 @@ jobs:
       - run: pod repo update
         working-directory: ios
 
-      # Set the bundle identifier
+    # Set the bundle identifier
       - name: Update Bundle Identifier
         run: |
           /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.k3studio.wanslu" ios/Runner/Info.plist
+
+      # Unlock Keychain with Hardcoded Password
+      - name: Unlock Keychain
+        run: |
+          security unlock-keychain -p "Kavya.99" ~/Library/Keychains/login.keychain-db
+          security set-key-partition-list -S apple-tool:,apple: -s -k "Kavya.99" ~/Library/Keychains/login.keychain-db
 
       - run: flutter build ios --release --no-codesign
 
