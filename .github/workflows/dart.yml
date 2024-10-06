@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-ios:
-    name: 🎉 iOS Build
+    name: 🎉Wanslu Shop iOS Build
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
@@ -14,11 +14,16 @@ jobs:
         with:
           channel: 'stable'
           architecture: x64
+      
       - run: flutter pub get
       
-
       - run: pod repo update
         working-directory: ios
+
+      # Set the bundle identifier
+      - name: Update Bundle Identifier
+        run: |
+          /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.k3studio.wanslu" ios/Runner/Info.plist
 
       - run: flutter build ios --release --no-codesign
 
@@ -39,4 +44,4 @@ jobs:
           file: build/ios/iphoneos/FlutterIpaExport.ipa
           tag: v1.0
           overwrite: true
-          body: "This is first release"
+          body: "This is the first release"
