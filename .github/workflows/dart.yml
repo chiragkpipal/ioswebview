@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-ios:
-    name: 🎉Wanslu Shop iOS Build
+    name: 🎉 Wanslu Shop iOS Build
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
@@ -14,9 +14,9 @@ jobs:
         with:
           channel: 'stable'
           architecture: x64
-      
+
       - run: flutter pub get
-      
+
       - run: pod repo update
         working-directory: ios
 
@@ -25,18 +25,39 @@ jobs:
         run: |
           /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.k3studio.wanslu" ios/Runner/Info.plist
 
+      # Build the iOS app without code signing
       - run: flutter build ios --release --no-codesign
 
-      - run: mkdir Payload
-        working-directory: build/ios/iphoneos
+      # Create a Payload directory and move the built app there
+      - run: |
+          mkdir Payload
+          mv build/ios/iphoneos/Runner.app Payload
 
-      - run: mv Runner.app/ Payload
-        working-directory: build/ios/iphoneos
+      # Install Provisioning Profile
+      - name: Install Provisioning Profile
+        run: |
+          echo "${{ secrets.PROVISIONING_PROFILE }}" > /tmp/provisioning.mobileprovision
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp /tmp/provisioning.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
 
+      # Install Certificate
+      - name: Install Certificate
+        run: |
+          echo "${{ secrets.CERTIFICATE_P12 }}" | base64 --decode > /tmp/certificate.p12
+          security import /tmp/certificate.p12 -P "${{ secrets.CERTIFICATE_PASSWORD }}" -T /usr/bin/codesign
+
+      # Code Sign the app
+      - name: Code Sign
+        run: |
+          security unlock-keychain -p "" /Users/runner/Library/Keychains/login.keychain
+          security set-key-partition-list -S apple-tool:,apple: -s -k "" /Users/runner/Library/Keychains/login.keychain
+          xcodebuild -exportArchive -archivePath build/ios/iphoneos/Runner.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build/ios/iphoneos
+
+      # Zip the output
       - name: Zip output
         run: zip -qq -r -9 FlutterIpaExport.ipa Payload
-        working-directory: build/ios/iphoneos
 
+      # Upload binaries to release
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
