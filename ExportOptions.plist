@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>method</key>
+    <string>app-store</string> <!-- Use 'ad-hoc' for Ad Hoc distribution -->
+    <key>teamID</key>
+    <string>DG9HUGCC2K</string> <!-- Replace with your Team ID -->
+    <key>provisioningProfiles</key>
+    <dict>
+        <key>com.k3studio.wanslu</key> <!-- Replace with your Bundle Identifier -->
+        <string>Wanslu profile</string> <!-- Replace with your Provisioning Profile Name -->
+    </dict>
+</dict>
+</plist>
