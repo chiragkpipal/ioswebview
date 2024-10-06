@@ -28,13 +28,11 @@ jobs:
       - run: flutter build ios --release --no-codesign
 
       # Create the necessary directories for signing
-      - run: mkdir -p ~/certificates
-        run: mkdir -p ~/provisioning
+      - run: mkdir -p ~/certificates ~/provisioning
 
       # Decode the P12 certificate and write it to a file
       - name: Create P12 Certificate
-        run: |
-          echo "${{ secrets.CERTIFICATE_P12 }}" | base64 --decode > ~/certificates/certificate.p12
+        run: echo "${{ secrets.CERTIFICATE_P12 }}" | base64 --decode > ~/certificates/certificate.p12
 
       # Import the certificate into the keychain
       - name: Import Certificate
@@ -47,7 +45,7 @@ jobs:
       - name: Create Provisioning Profile
         run: |
           echo "${{ secrets.PROVISIONING_PROFILE }}" | base64 --decode > ~/provisioning/provisioning_profile.mobileprovision
-          cp ~/provisioning/provisioning_profile.mobileprovision ~/Library/MobileDevice/Provisioning Profiles/
+          cp ~/provisioning/provisioning_profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
 
       # Set keychain partition list
       - name: Set Keychain Access
@@ -59,16 +57,19 @@ jobs:
         run: |
           xcodebuild -exportArchive -archivePath build/ios/iphoneos/Runner.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build/ios/iphoneos
 
+      # Create Payload directory and move the app
       - run: mkdir Payload
         working-directory: build/ios/iphoneos
 
       - run: mv Runner.app/ Payload
         working-directory: build/ios/iphoneos
 
+      # Zip output
       - name: Zip output
         run: zip -qq -r -9 FlutterIpaExport.ipa Payload
         working-directory: build/ios/iphoneos
 
+      # Upload binaries to release
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
