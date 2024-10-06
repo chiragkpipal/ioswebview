@@ -27,49 +27,43 @@ jobs:
 
       - run: flutter build ios --release --no-codesign
 
-      # Create the necessary directories for signing
-      - run: mkdir -p ~/certificates ~/provisioning
+      # Ensure the Provisioning Profiles directory exists
+      - name: Ensure Provisioning Profiles Directory Exists
+        run: mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
 
-      # Decode the P12 certificate and write it to a file
-      - name: Create P12 Certificate
-        run: echo "${{ secrets.CERTIFICATE_P12 }}" | base64 --decode > ~/certificates/certificate.p12
+      # Decode and install the provisioning profile
+      - name: Decode Provisioning Profile
+        run: echo "${{ secrets.PROVISIONING_PROFILE }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/Wanslu.mobileprovision
 
-      # Import the certificate into the keychain
-      - name: Import Certificate
+      # Ensure the certificate directory exists
+      - name: Ensure Certificate Directory Exists
+        run: mkdir -p ~/certificates
+
+      # Decode and install the P12 certificate
+      - name: Decode P12 Certificate
+        run: echo "${{ secrets.CERTIFICATE_P12 }}" | base64 --decode > ~/certificates/Wanslu.p12
+
+      # Keychain unlock
+      - name: Unlock Keychain
         run: |
-          security import ~/certificates/certificate.p12 -P "${{ secrets.CERTIFICATE_PASSWORD }}" -A
-          security list-keychains -s /Users/runner/Library/Keychains/login.keychain
-          security unlock-keychain -p "${{ secrets.CERTIFICATE_PASSWORD }}" /Users/runner/Library/Keychains/login.keychain
+          security unlock-keychain -p "${{ secrets.CERTIFICATE_PASSWORD }}" ~/Library/Keychains/login.keychain-db
+          security set-key-partition-list -S apple-tool:,apple: -s -k "${{ secrets.CERTIFICATE_PASSWORD }}" ~/Library/Keychains/login.keychain-db
 
-      # Create and write the provisioning profile
-      - name: Create Provisioning Profile
+      # Import the certificate to the keychain
+      - name: Import P12 Certificate
         run: |
-          echo "${{ secrets.PROVISIONING_PROFILE }}" | base64 --decode > ~/provisioning/provisioning_profile.mobileprovision
-          cp ~/provisioning/provisioning_profile.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+          security import ~/certificates/Wanslu.p12 -P "${{ secrets.CERTIFICATE_PASSWORD }}" -T /usr/bin/codesign -T /usr/bin/security
 
-      # Set keychain partition list
-      - name: Set Keychain Access
-        run: |
-          security set-key-partition-list -S apple-tool:,apple: -s -k "${{ secrets.CERTIFICATE_PASSWORD }}" /Users/runner/Library/Keychains/login.keychain
-
-      # Code signing
-      - name: Code Sign
-        run: |
-          xcodebuild -exportArchive -archivePath build/ios/iphoneos/Runner.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build/ios/iphoneos
-
-      # Create Payload directory and move the app
       - run: mkdir Payload
         working-directory: build/ios/iphoneos
 
       - run: mv Runner.app/ Payload
         working-directory: build/ios/iphoneos
 
-      # Zip output
       - name: Zip output
         run: zip -qq -r -9 FlutterIpaExport.ipa Payload
         working-directory: build/ios/iphoneos
 
-      # Upload binaries to release
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
