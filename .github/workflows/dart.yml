@@ -5,7 +5,7 @@ on:
 
 jobs:
   build-ios:
-    name: 🎉 Wanslu Shop iOS Build
+    name: 🎉Wanslu Shop iOS Build
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
@@ -14,9 +14,9 @@ jobs:
         with:
           channel: 'stable'
           architecture: x64
-
+      
       - run: flutter pub get
-
+      
       - run: pod repo update
         working-directory: ios
 
@@ -25,10 +25,8 @@ jobs:
         run: |
           /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier com.k3studio.wanslu" ios/Runner/Info.plist
 
-      # Build the iOS app without code signing
       - run: flutter build ios --release --no-codesign
 
-  
       # Create the necessary directories for signing
       - run: mkdir -p ~/certificates
         run: mkdir -p ~/provisioning
