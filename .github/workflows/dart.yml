@@ -28,36 +28,49 @@ jobs:
       # Build the iOS app without code signing
       - run: flutter build ios --release --no-codesign
 
-      # Create a Payload directory and move the built app there
-      - run: |
-          mkdir Payload
-          mv build/ios/iphoneos/Runner.app Payload
+  
+      # Create the necessary directories for signing
+      - run: mkdir -p ~/certificates
+        run: mkdir -p ~/provisioning
 
-      # Install Provisioning Profile
-      - name: Install Provisioning Profile
+      # Decode the P12 certificate and write it to a file
+      - name: Create P12 Certificate
         run: |
-          echo "${{ secrets.PROVISIONING_PROFILE }}" > /tmp/provisioning.mobileprovision
-          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp /tmp/provisioning.mobileprovision ~/Library/MobileDevice/Provisioning\ Profiles/
+          echo "${{ secrets.CERTIFICATE_P12 }}" | base64 --decode > ~/certificates/certificate.p12
 
-      # Install Certificate
-      - name: Install Certificate
+      # Import the certificate into the keychain
+      - name: Import Certificate
         run: |
-          echo "${{ secrets.CERTIFICATE_P12 }}" | base64 --decode > /tmp/certificate.p12
-          security import /tmp/certificate.p12 -P "${{ secrets.CERTIFICATE_PASSWORD }}" -T /usr/bin/codesign
+          security import ~/certificates/certificate.p12 -P "${{ secrets.CERTIFICATE_PASSWORD }}" -A
+          security list-keychains -s /Users/runner/Library/Keychains/login.keychain
+          security unlock-keychain -p "${{ secrets.CERTIFICATE_PASSWORD }}" /Users/runner/Library/Keychains/login.keychain
 
-      # Code Sign the app
+      # Create and write the provisioning profile
+      - name: Create Provisioning Profile
+        run: |
+          echo "${{ secrets.PROVISIONING_PROFILE }}" | base64 --decode > ~/provisioning/provisioning_profile.mobileprovision
+          cp ~/provisioning/provisioning_profile.mobileprovision ~/Library/MobileDevice/Provisioning Profiles/
+
+      # Set keychain partition list
+      - name: Set Keychain Access
+        run: |
+          security set-key-partition-list -S apple-tool:,apple: -s -k "${{ secrets.CERTIFICATE_PASSWORD }}" /Users/runner/Library/Keychains/login.keychain
+
+      # Code signing
       - name: Code Sign
         run: |
-          security unlock-keychain -p "" /Users/runner/Library/Keychains/login.keychain
-          security set-key-partition-list -S apple-tool:,apple: -s -k "" /Users/runner/Library/Keychains/login.keychain
           xcodebuild -exportArchive -archivePath build/ios/iphoneos/Runner.xcarchive -exportOptionsPlist ExportOptions.plist -exportPath build/ios/iphoneos
 
-      # Zip the output
+      - run: mkdir Payload
+        working-directory: build/ios/iphoneos
+
+      - run: mv Runner.app/ Payload
+        working-directory: build/ios/iphoneos
+
       - name: Zip output
         run: zip -qq -r -9 FlutterIpaExport.ipa Payload
+        working-directory: build/ios/iphoneos
 
-      # Upload binaries to release
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
